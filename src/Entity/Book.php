@@ -12,15 +12,15 @@ class Book
     #[ORM\Id]
     #[ORM\GeneratedValue]
     #[ORM\Column(type: 'integer')]
-    #[Groups(["getBooks"])]
+    #[Groups(["getBooks", "getAuthors"])]
     private $id;
 
     #[ORM\Column(type: 'string', length: 255)]
-    #[Groups(["getBooks"])]
+    #[Groups(["getBooks", "getAuthors"])]
     private $title;
 
     #[ORM\Column(type: 'text', nullable: true)]
-    #[Groups(["getBooks"])]
+    #[Groups(["getBooks", "getAuthors"])]
     private $coverText;
 
     #[ORM\ManyToOne(targetEntity: Author::class, inversedBy: 'books')]
