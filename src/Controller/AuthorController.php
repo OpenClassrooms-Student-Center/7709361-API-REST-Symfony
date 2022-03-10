@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Author;
 use App\Repository\AuthorRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Sensio\Bundle\FrameworkExtraBundle\Configuration\IsGranted;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -66,6 +67,7 @@ class AuthorController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/authors/{id}', name: 'deleteAuthor', methods: ['DELETE'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un auteur')]
     public function deleteAuthor(Author $author, EntityManagerInterface $em): JsonResponse {
         
         $em->remove($author);
@@ -91,6 +93,7 @@ class AuthorController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/authors', name: 'createAuthor', methods: ['POST'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un auteur')]
     public function createAuthor(Request $request, SerializerInterface $serializer,
         EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator): JsonResponse {
         $author = $serializer->deserialize($request->getContent(), Author::class, 'json');
@@ -127,6 +130,7 @@ class AuthorController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/authors/{id}', name:"updateAuthors", methods:['PUT'])]
+    #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour éditer un auteur')]
     public function updateAuthor(Request $request, SerializerInterface $serializer,
         Author $currentAuthor, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse {
 
