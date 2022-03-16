@@ -15,6 +15,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class AuthorController extends AbstractController
 {
@@ -27,11 +29,21 @@ class AuthorController extends AbstractController
      * @return JsonResponse
      */
     #[Route('/api/authors', name: 'authors', methods: ['GET'])]
-    public function getAllAuthors(AuthorRepository $authorRepository, SerializerInterface $serializer): JsonResponse
+    public function getAllAuthors(AuthorRepository $authorRepository, SerializerInterface $serializer, 
+        Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
-        $authorList = $authorRepository->findAll();
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
         
-        $jsonAuthorList = $serializer->serialize($authorList, 'json', ['groups' => 'getAuthors']);
+        $idCache = "getAllAuthor-" . $page . "-" . $limit;
+
+        $jsonAuthorList = $cache->get($idCache, function (ItemInterface $item) use ($authorRepository, $page, $limit, $serializer) {
+            //echo ("L'ELEMENT N'EST PAS ENCORE EN CACHE !\n");
+            $item->tag("booksCache");
+            $authorList = $authorRepository->findAllWithPagination($page, $limit);
+            return $serializer->serialize($authorList, 'json', ['groups' => 'getAuthors']);
+        });
+        
         return new JsonResponse($jsonAuthorList, Response::HTTP_OK, [], true);
     }
 	
@@ -68,12 +80,14 @@ class AuthorController extends AbstractController
      */
     #[Route('/api/authors/{id}', name: 'deleteAuthor', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un auteur')]
-    public function deleteAuthor(Author $author, EntityManagerInterface $em): JsonResponse {
+    public function deleteAuthor(Author $author, EntityManagerInterface $em, TagAwareCacheInterface $cache): JsonResponse {
         
         $em->remove($author);
-        
         $em->flush();
-        dd($author->getBooks());
+
+        // On vide le cache.
+        $cache->invalidateTags(["booksCache"]);
+
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
@@ -95,7 +109,8 @@ class AuthorController extends AbstractController
     #[Route('/api/authors', name: 'createAuthor', methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un auteur')]
     public function createAuthor(Request $request, SerializerInterface $serializer,
-        EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator): JsonResponse {
+        EntityManagerInterface $em, UrlGeneratorInterface $urlGenerator, ValidatorInterface $validator,
+        TagAwareCacheInterface $cache): JsonResponse {
         $author = $serializer->deserialize($request->getContent(), Author::class, 'json');
         
         // On vérifie les erreurs
@@ -106,6 +121,9 @@ class AuthorController extends AbstractController
         
         $em->persist($author);
         $em->flush();
+        
+        // On vide le cache. 
+        $cache->invalidateTags(["booksCache"]);
 
         $jsonAuthor = $serializer->serialize($author, 'json', ['groups' => 'getAuthors']);
         $location = $urlGenerator->generate('detailAuthor', ['id' => $author->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
@@ -132,7 +150,8 @@ class AuthorController extends AbstractController
     #[Route('/api/authors/{id}', name:"updateAuthors", methods:['PUT'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour éditer un auteur')]
     public function updateAuthor(Request $request, SerializerInterface $serializer,
-        Author $currentAuthor, EntityManagerInterface $em, ValidatorInterface $validator): JsonResponse {
+        Author $currentAuthor, EntityManagerInterface $em, ValidatorInterface $validator,
+        TagAwareCacheInterface $cache): JsonResponse {
 
         // On vérifie les erreurs
         $errors = $validator->validate($currentAuthor);
@@ -143,6 +162,9 @@ class AuthorController extends AbstractController
         $updatedAuthor = $serializer->deserialize($request->getContent(), Author::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $currentAuthor]);
         $em->persist($updatedAuthor);
         $em->flush();
+
+        // On vide le cache. 
+        $cache->invalidateTags(["booksCache"]);
 
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
 

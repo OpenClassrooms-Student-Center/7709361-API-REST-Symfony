@@ -16,25 +16,49 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Symfony\Component\Serializer\Normalizer\AbstractNormalizer;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Contracts\Cache\TagAwareCacheInterface;
 
 class BookController extends AbstractController
-{
+{   
     /**
      * Cette méthode permet de récupérer l'ensemble des livres. 
      *
      * @param BookRepository $bookRepository
      * @param SerializerInterface $serializer
+     * @param Request $request
      * @return JsonResponse
      */
     #[Route('/api/books', name: 'books', methods: ['GET'])]
-    public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer): JsonResponse
+    public function getAllBooks(BookRepository $bookRepository, SerializerInterface $serializer, Request $request, TagAwareCacheInterface $cache): JsonResponse
     {
-        $bookList = $bookRepository->findAll();
+        $page = $request->get('page', 1);
+        $limit = $request->get('limit', 3);
+
+        $idCache = "getAllBooks-" . $page . "-" . $limit;
         
-        $jsonBookList = $serializer->serialize($bookList, 'json', ['groups' => 'getBooks']);
+        $jsonBookList = $cache->get($idCache, function (ItemInterface $item) use ($bookRepository, $page, $limit, $serializer) {
+            //echo ("L'ELEMENT N'EST PAS ENCORE EN CACHE !\n");
+            $item->tag("booksCache");
+            $bookList = $bookRepository->findAllWithPagination($page, $limit);
+            return $serializer->serialize($bookList, 'json', ['groups' => 'getBooks']);
+        });
+
         return new JsonResponse($jsonBookList, Response::HTTP_OK, [], true);
     }
-	
+
+    /**
+     * Méthode temporaire pour vider le cache. 
+     *
+     * @param TagAwareCacheInterface $cache
+     * @return void
+     */
+    #[Route('/api/books/clearCache', name:"clearCache", methods:['GET'])]
+    public function clearCache(TagAwareCacheInterface $cache) {
+        $cache->invalidateTags(["booksCache"]);
+        return new JsonResponse("Cache Vidé", JsonResponse::HTTP_OK);
+    }
+
     /**
      * Cette méthode permet de récupérer un livre en particulier en fonction de son id. 
      *
@@ -47,8 +71,7 @@ class BookController extends AbstractController
         $jsonBook = $serializer->serialize($book, 'json', ['groups' => 'getBooks']);
         return new JsonResponse($jsonBook, Response::HTTP_OK, [], true);
     }
-    
-    
+      
     /**
      * Cette méthode permet de supprimer un livre par rapport à son id. 
      *
@@ -58,9 +81,11 @@ class BookController extends AbstractController
      */
     #[Route('/api/books/{id}', name: 'deleteBook', methods: ['DELETE'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour supprimer un livre')]
-    public function deleteBook(Book $book, EntityManagerInterface $em): JsonResponse {
+    public function deleteBook(Book $book, EntityManagerInterface $em, TagAwareCacheInterface $cache): JsonResponse {
         $em->remove($book);
         $em->flush();
+        // On vide le cache.
+        $cache->invalidateTags(["booksCache"]);
         return new JsonResponse(null, Response::HTTP_NO_CONTENT);
     }
 
@@ -87,7 +112,9 @@ class BookController extends AbstractController
     #[Route('/api/books', name:"createBook", methods: ['POST'])]
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour créer un livre')]
     public function createBook(Request $request, SerializerInterface $serializer, EntityManagerInterface $em,
-        UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository, ValidatorInterface $validator): JsonResponse {
+        UrlGeneratorInterface $urlGenerator, AuthorRepository $authorRepository, ValidatorInterface $validator,
+        TagAwareCacheInterface $cache): JsonResponse {
+
         $book = $serializer->deserialize($request->getContent(), Book::class, 'json');
 
         // On vérifie les erreurs
@@ -97,16 +124,17 @@ class BookController extends AbstractController
             //throw new HttpException(JsonResponse::HTTP_BAD_REQUEST, "La requête est invalide");
         }
 
+        $content = $request->toArray();
+        $idAuthor = $content['idAuthor'] ?? -1;
+        $book->setAuthor($authorRepository->find($idAuthor));
+
         $em->persist($book);
         $em->flush();
 
-        $content = $request->toArray();
-        $idAuthor = $content['idAuthor'] ?? -1;
+        // On vide le cache. 
+        $cache->invalidateTags(["booksCache"]);
 
-        $book->setAuthor($authorRepository->find($idAuthor));
-
-
-		$jsonBook = $serializer->serialize($book, 'json', ['groups' => 'getBooks']);
+        $jsonBook = $serializer->serialize($book, 'json', ['groups' => 'getBooks']);
 		
         $location = $urlGenerator->generate('detailBook', ['id' => $book->getId()], UrlGeneratorInterface::ABSOLUTE_URL);
 
@@ -135,7 +163,7 @@ class BookController extends AbstractController
     #[IsGranted('ROLE_ADMIN', message: 'Vous n\'avez pas les droits suffisants pour éditer un livre')]
     public function updateBook(Request $request, SerializerInterface $serializer,
                         Book $currentBook, EntityManagerInterface $em, AuthorRepository $authorRepository, 
-                        ValidatorInterface $validator): JsonResponse {
+                        ValidatorInterface $validator, TagAwareCacheInterface $cache): JsonResponse {
         $updatedBook = $serializer->deserialize($request->getContent(), Book::class, 'json', [AbstractNormalizer::OBJECT_TO_POPULATE => $currentBook]);
 
         // On vérifie les erreurs
@@ -151,6 +179,9 @@ class BookController extends AbstractController
 
         $em->persist($updatedBook);
         $em->flush();
+        
+        // On vide le cache. 
+        $cache->invalidateTags(["booksCache"]);
 
         return new JsonResponse(null, JsonResponse::HTTP_NO_CONTENT);
     }

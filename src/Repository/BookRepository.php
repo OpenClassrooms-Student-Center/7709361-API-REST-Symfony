@@ -3,7 +3,10 @@
 namespace App\Repository;
 
 use App\Entity\Book;
+use App\Entity\Author;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\DBAL\Query;
+use Doctrine\ORM\Mapping\JoinTable;
 use Doctrine\Persistence\ManagerRegistry;
 
 /**
@@ -18,6 +21,23 @@ class BookRepository extends ServiceEntityRepository
     {
         parent::__construct($registry, Book::class);
     }
+
+    /**
+     * Cette méthode Retourne $limit livres à partir de la page $page. 
+     *
+     * @param integer $page
+     * @param integer $limit
+     * @return mixed
+     */
+    public function findAllWithPagination($page, $limit) {
+        $qb = $this->createQueryBuilder('b')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+   
+        return $qb->getQuery()->getResult();
+    }
+
+
 
     // /**
     //  * @return Book[] Returns an array of Book objects

@@ -19,6 +19,21 @@ class AuthorRepository extends ServiceEntityRepository
         parent::__construct($registry, Author::class);
     }
 
+    /**
+     * Cette méthode Retourne $limit auteurs à partir de la page $page. 
+     *
+     * @param integer $page
+     * @param integer $limit
+     * @return mixed
+     */
+    public function findAllWithPagination($page, $limit) {
+        $qb = $this->createQueryBuilder('a')
+            ->setFirstResult(($page - 1) * $limit)
+            ->setMaxResults($limit);
+
+        return $qb->getQuery()->getResult();
+    }
+
     // /**
     //  * @return Author[] Returns an array of Author objects
     //  */
