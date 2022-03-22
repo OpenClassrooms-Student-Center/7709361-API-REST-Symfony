@@ -48,18 +48,6 @@ class BookController extends AbstractController
     }
 
     /**
-     * Méthode temporaire pour vider le cache. 
-     *
-     * @param TagAwareCacheInterface $cache
-     * @return void
-     */
-    #[Route('/api/books/clearCache', name:"clearCache", methods:['GET'])]
-    public function clearCache(TagAwareCacheInterface $cache) {
-        $cache->invalidateTags(["booksCache"]);
-        return new JsonResponse("Cache Vidé", JsonResponse::HTTP_OK);
-    }
-
-    /**
      * Cette méthode permet de récupérer un livre en particulier en fonction de son id. 
      *
      * @param Book $book
