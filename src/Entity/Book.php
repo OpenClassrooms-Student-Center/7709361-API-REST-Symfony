@@ -7,6 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation\Groups;
 use Symfony\Component\Validator\Constraints as Assert;
 use Hateoas\Configuration\Annotation as Hateoas;
+use JMS\Serializer\Annotation\Since;
 
 /**
  * @Hateoas\Relation(
@@ -60,6 +61,11 @@ class Book
     #[Groups(["getBooks"])]
     private $author;
 
+    #[ORM\Column(type: 'text', nullable: true)]
+    #[Groups(["getBooks"])]
+    #[Since("2.0")]
+    private $comment;
+
     public function getId(): ?int
     {
         return $this->id;
@@ -97,6 +103,18 @@ class Book
     public function setAuthor(?Author $author): self
     {
         $this->author = $author;
+
+        return $this;
+    }
+
+    public function getComment(): ?string
+    {
+        return $this->comment;
+    }
+
+    public function setComment(?string $comment): self
+    {
+        $this->comment = $comment;
 
         return $this;
     }
