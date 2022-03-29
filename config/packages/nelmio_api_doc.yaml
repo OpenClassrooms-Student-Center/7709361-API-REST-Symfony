@@ -1,0 +1,53 @@
+nelmio_api_doc:
+    documentation:
+        info:
+            title: Books
+            description: Une API d'OpenClassrooms avec des livres, des autrices et des auteurs !
+            version: 2.0.0
+        paths:
+            /api/login_check:
+                post:
+                    tags:
+                        - Token
+                    operationId: postCredentialsItem
+                    summary: Permet d'obtenir le token JWT pour se logger.
+                    requestBody:
+                        description: Crée un nouveau token JWT
+                        content:
+                            application/json:
+                                schema:
+                                    $ref: '#/components/schemas/Credentials'
+                    responses:
+                        '200':
+                            description: Récupère le token JWT
+                            content:
+                                application/json:
+                                    schema:
+                                        $ref: '#/components/schemas/Token'
+        components:
+            schemas:
+                Token:
+                    type: object
+                    properties:
+                        token:
+                            type: string
+                            readOnly: true
+                Credentials:
+                    type: object
+                    properties:
+                        username:
+                            type: string
+                            default: admin@bookapi.com
+                        password:
+                            type: string
+                            default: password
+            securitySchemes:
+                bearerAuth:            
+                    type: apiKey
+                    in: header
+                    name: Authorization # or another header name
+        security:
+            - bearerAuth: []
+    areas: # to filter documented areas
+        path_patterns:
+            - ^/api(?!/doc$) # Accepts routes under /api except /api/doc
