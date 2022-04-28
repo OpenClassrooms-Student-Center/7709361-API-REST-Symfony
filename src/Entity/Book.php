@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use ApiPlatform\Core\Annotation\ApiResource;
 use App\Repository\BookRepository;
 use Doctrine\ORM\Mapping as ORM;
 use JMS\Serializer\Annotation\Groups;
@@ -28,7 +29,7 @@ use JMS\Serializer\Annotation\Since;
  *      exclusion = @Hateoas\Exclusion(groups="getBooks", excludeIf = "expr(not is_granted('ROLE_ADMIN'))"),
  * )
  * 
- * * @Hateoas\Relation(
+ * @Hateoas\Relation(
  *      "update",
  *      href = @Hateoas\Route(
  *          "updateBook",
@@ -38,6 +39,7 @@ use JMS\Serializer\Annotation\Since;
  * )
  */
 #[ORM\Entity(repositoryClass: BookRepository::class)]
+#[ApiResource()]
 class Book
 {
     #[ORM\Id]
@@ -49,7 +51,7 @@ class Book
     #[ORM\Column(type: 'string', length: 255)]
     #[Groups(["getBooks", "getAuthors"])]
     #[Assert\NotBlank(message: "Le titre du livre est obligatoire")]
-    #[Assert\Length(min: 1, max: 255, minMessage: "Le titre doit faire au moins {{ limit }} caractère", maxMessage: "Le titre ne peut pas faire plus de {{ limit }} caractères")]
+    #[Assert\Length(min: 1, max: 255, minMessage: "Le titre doit faire au moins {{ limit }} caractères", maxMessage: "Le titre ne peut pas faire plus de {{ limit }} caractères")]
     private $title;
 
     #[ORM\Column(type: 'text', nullable: true)]

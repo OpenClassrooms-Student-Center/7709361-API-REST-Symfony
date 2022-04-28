@@ -20,7 +20,6 @@ class AppFixtures extends Fixture
 
     public function load(ObjectManager $manager): void
     {
-
         // Création d'un user "normal"
         $user = new User();
         $user->setEmail("user@bookapi.com");

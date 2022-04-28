@@ -64,7 +64,8 @@ class BookController extends AbstractController
 
         $idCache = "getAllBooks-" . $page . "-" . $limit;
         
-        $jsonBookList = $cache->get($idCache, function (ItemInterface $item) use ($bookRepository, $page, $limit, $serializer) {
+        $jsonBookList = $cache->get($idCache, 
+            function (ItemInterface $item) use ($bookRepository, $page, $limit, $serializer) {
             //echo ("L'ELEMENT N'EST PAS ENCORE EN CACHE !\n");
             $item->tag("booksCache");
             $bookList = $bookRepository->findAllWithPagination($page, $limit);
